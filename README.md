@@ -6,6 +6,9 @@ beside your notes, every section can end with a quiz, and a study heatmap keeps 
 
 Free and open source (MIT). Your notes stay on your computer.
 
+**[⬇ Download the Mac app](https://github.com/M-alk/ocean/releases/latest)** (Apple Silicon). First open: right-click Ocean → Open,
+because the app isn’t notarised by Apple yet.
+
 ## Get started
 
 You need [Node.js](https://nodejs.org) 20 or newer (and a Mac for the desktop app).
