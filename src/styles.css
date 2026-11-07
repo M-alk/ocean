@@ -202,14 +202,31 @@ code { font-family: var(--mono); }
 .editor-host .milkdown .ProseMirror th { background: var(--side); font-weight: 600; text-align: left; }
 .editor-host .milkdown .milkdown-code-block { background: var(--code-bg); border-radius: 6px; }
 
-/* Images that are referenced but not imported yet (e.g. a slide before its PDF is added) */
-.milkdown [data-missing] { position: relative; min-height: 64px; }
-.milkdown [data-missing] img { opacity: 0; height: 64px; }
+/* Images that are referenced but not imported yet (e.g. a slide before its PDF is added): a small tag, not a gap */
+.milkdown [data-missing] { position: relative; min-height: 0 !important; }
+.milkdown [data-missing] > * { display: none !important; }
 .milkdown [data-missing]::after {
-  content: '🖼  ' attr(data-missing) ' — not in the notes folder yet. Drop the lecture PDF on this page to fill in slide images.';
-  position: absolute; inset: 0; display: flex; align-items: center; padding: 0 16px; border: 1px dashed var(--text-3);
-  border-radius: 6px; color: var(--text-2); font-size: 13px; background: var(--side); pointer-events: none;
+  content: attr(data-missing) ' · not added yet';
+  display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin: 2px 0; border-radius: 6px;
+  border: 1px dashed var(--border); color: var(--text-3); font-size: 12.5px; background: none;
 }
+.slides-importing .milkdown [data-missing-kind='slide']::after { content: attr(data-missing) ' · importing…'; }
+.milkdown [data-missing-kind='web']::after { content: 'Picture from ' attr(data-missing) ' couldn’t load — replace it with a slide or paste the image'; }
+
+/* Bar at the top of a note: slides missing, or an import in progress */
+.slide-bar { display: flex; align-items: center; gap: 10px; max-width: 708px; width: calc(100% - 48px); margin: 14px auto 0; padding: 9px 12px;
+  border-radius: 8px; background: var(--hover); color: var(--text-2); font-size: 13.5px; }
+.slide-bar b { color: var(--text); font-weight: 500; }
+.slide-bar > span:nth-child(2) { flex: 1; min-width: 0; }
+.slide-bar-btn { flex: none; height: 28px; padding: 0 10px; border-radius: 6px; background: var(--text); color: var(--bg); font-weight: 500; }
+.slide-bar-btn:hover { opacity: .85; }
+.slide-bar-track { flex: none; width: 120px; height: 4px; border-radius: 2px; background: var(--active); overflow: hidden; }
+.slide-bar-track > span { display: block; height: 100%; background: var(--text-2); transition: width .2s; }
+
+/* Code blocks (maths, visuals, quizzes…) are drawn when they scroll into view. Until then the editor shows their
+   raw source; show a quiet grey box instead, so it never flashes as red "error" text while scrolling. */
+.editor-host .milkdown .milkdown-code-block-placeholder { margin: 0; padding: 12px; min-height: 44px; border-radius: 6px; background: var(--hover); overflow: hidden; }
+.editor-host .milkdown .milkdown-code-block-placeholder code { color: transparent !important; background: none !important; }
 
 .mermaid-preview { display: flex; justify-content: center; padding: 12px; }
 .mermaid-preview svg { max-width: 100%; height: auto; }

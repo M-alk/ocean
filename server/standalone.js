@@ -8,7 +8,7 @@ import { makeHandler } from './plugin.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.ico': 'image/x-icon',
 };
 
@@ -21,6 +21,8 @@ export function startServer({ port = 0, distDir = path.join(here, '..', 'dist') 
       let file = path.join(distDir, decodeURIComponent(url.pathname));
       if (!file.startsWith(distDir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(distDir, 'index.html');
       res.setHeader('Content-Type', TYPES[path.extname(file)] || 'application/octet-stream');
+      // The page itself is never cached (so an update shows at once); built assets have unique names.
+      res.setHeader('Cache-Control', file.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable');
       fs.createReadStream(file).pipe(res);
     });
   });

@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Crepe } from '@milkdown/crepe';
+import { CodeMirrorBlock } from '@milkdown/kit/component/code-block';
 import { replaceAll, insert } from '@milkdown/kit/utils';
 import { remarkStringifyOptionsCtx, commandsCtx, editorViewCtx } from '@milkdown/kit/core';
 import { Selection } from '@milkdown/kit/prose/state';
@@ -100,8 +101,13 @@ function renderEmbed(pagePath, content) {
   return wrap;
 }
 
-const SLIDE_SRC = /\/slides\/p(\d+)\.(?:jpe?g|png|webp)$/i;
+const SLIDE_SRC = /\/slides\/p(\d+)\.(?:jpe?g|png|webp)(?:[?#].*)?$/i;
 /** Slide number a link/image points at, e.g. ".../slides/p19.jpg" → 19. */
+// Code blocks (maths, diagrams, quizzes…) are built when they scroll into view. The editor normally throws them away
+// 5 s after they leave the screen and rebuilds them on the way back, which made scrolling stutter and diagrams reload.
+// Keep them for 30 minutes instead.
+CodeMirrorBlock.TEARDOWN_DELAY = 30 * 60 * 1000;
+
 export const slideOf = (url) => {
   try {
     const m = SLIDE_SRC.exec(decodeURIComponent(url || ''));
@@ -168,6 +174,15 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
         view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
         view.focus();
       });
+    },
+    /** Try images that failed to load again (e.g. slides that have just been added to the folder). */
+    retryMissing() {
+      for (const img of host.current?.querySelectorAll('[data-missing] img') || []) {
+        const src = img.getAttribute('src');
+        if (!src) continue;
+        // A fresh query string makes the browser ask again instead of reusing the failed result.
+        img.src = src.replace(/([?&])_r=\d+/, '').replace(/[?&]$/, '') + (src.includes('?') ? '&' : '?') + '_r=' + Date.now();
+      }
     },
     /** Every place in the note that refers to a slide, top to bottom. */
     slideRefs() {
@@ -356,8 +371,9 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
       for (const img of el.querySelectorAll('img')) {
         const n = slideOf(img.getAttribute('src'));
         const box = img.closest('.milkdown-image-block, .milkdown-image-inline') || img.parentElement;
-        if (n) box.dataset.slide = n;
-        else delete box.dataset.slide;
+        // Only touch the attribute when it changes: every write makes the browser restyle the page.
+        if (n) { if (box.dataset.slide !== String(n)) box.dataset.slide = n; }
+        else if (box.dataset.slide) delete box.dataset.slide;
       }
       // Quizzes and embeds come out of the editor's preview sanitiser without their behaviour; bring them to life here.
       hydrateQuizzes(el);
@@ -396,8 +412,17 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
       if (e.target.tagName !== 'IMG') return;
       const box = e.target.closest('.milkdown-image-block, .milkdown-image-inline') || e.target.parentElement;
       if (e.type === 'error') {
-        box.dataset.missing = decodeURIComponent((e.target.getAttribute('src') || '').split('/').pop() || 'image');
-      } else delete box.dataset.missing;
+        const src = e.target.getAttribute('src') || '';
+        const n = slideOf(src);
+        let web = null;
+        try { web = /^https?:/i.test(src) ? new URL(src).host : null; } catch { /* not a web address */ }
+        // slide = waiting for the lecture PDF · web = a picture on another site (e.g. left behind by a Notion import)
+        box.dataset.missingKind = n ? 'slide' : web ? 'web' : 'file';
+        box.dataset.missing = n ? `Slide ${n}` : web || decodeURIComponent(src.split(/[?#]/)[0].split('/').pop() || 'image');
+      } else {
+        delete box.dataset.missing;
+        delete box.dataset.missingKind;
+      }
     };
     const click = (e) => {
       // Clicking anything that refers to a slide shows that slide in the panel.

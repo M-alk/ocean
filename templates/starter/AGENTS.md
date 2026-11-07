@@ -7,6 +7,19 @@ the Filesystem extension all work.)
 
 Read this whole file before your first edit.
 
+## ✅ Every lecture note = 4 things (don't stop after the first)
+
+When the student asks for notes on a lecture, you are **not done** until all four exist:
+
+1. **The detailed note** — `Course/Week N Title.md` in the house style (§6), with slides (§2) and a quiz per section (§4).
+2. **Exam-importance marks inside it** — `=={!!!}…==`, `=={!!}…==`, `=={!}…==` around the key phrases (§3b).
+   Mark while you write, not as an afterthought.
+3. **The Short read** — `Course/Week N Title.short.md` (§7).
+4. **The Recall sheet** — `Course/Week N Title.recall.md` (§7).
+
+Then, before you reply, run the checklist in §8 and tell the student which of the four you wrote. Skip one only if
+the student says so ("just the detailed note").
+
 ---
 
 ## 1. Layout
@@ -58,15 +71,28 @@ sub-page, also add its link line to the parent (where it belongs in the order).
 
 ## 2. Slides
 
-The student imports slides by **dropping the lecture PDF/PowerPoint onto the page in Ocean** (or, from the
-Ocean code folder: `npm run slides -- lecture.pdf "Course/Week 3 Word Embeddings.md"`). That creates
-`slides/pNN.jpg` (two digits: `p04.jpg`, `p17.jpg`) and `slides/slides.md` with each slide's text.
+A page's slides live in `<page folder>/slides/`: one image per slide, `pNN.jpg` (slide N = PDF page N, two
+digits: `p04.jpg`, `p17.jpg`; three digits if the deck has 100+ slides), `slides.md` with each slide's text, and
+the original PDF.
 
-- **Read `slides/slides.md` first** for the text, then **look at the slide images** you need (diagrams, tables,
-  worked examples) — the text alone misses them.
-- If the slides aren't imported yet but you have the PDF in the conversation, you can still write the note:
-  link the slides by number (`p08.jpg`). Ocean shows a placeholder until the PDF is dropped on the page, then the
-  pictures appear by themselves. Tell the student to drop the PDF on the page.
+**Getting the slides in — do this yourself whenever you have the PDF as a file:**
+
+1. **Copy the PDF into `<page folder>/slides/`** (create the folder), e.g.
+   `Course/Week 3 Word Embeddings/slides/Lecture 5.pdf`. That's all: Ocean turns it into `pNN.jpg` +
+   `slides.md` by itself as soon as the page is open (a bar shows the progress). No extra tools needed.
+2. Or, if you can render PDF pages yourself (e.g. `pdftoppm -jpeg -r 110 lecture.pdf slides/p` → rename to
+   `p01.jpg`, `p02.jpg`…), write the images and `slides.md` directly. Use exactly the `pNN.jpg` names.
+3. Only if you can't save files (e.g. the PDF is just a chat attachment), ask the student to **drop the PDF onto
+   the page** in Ocean.
+
+Either way, write the note straight away and link slides by number: Ocean shows a small "Slide 8 · not added yet"
+tag until the image exists, then the picture appears by itself — even while the page is open.
+
+- **Read `slides/slides.md` first** for the text (or the PDF itself if it isn't imported yet), then **look at the
+  slide images** you need (diagrams, tables, worked examples) — the text alone misses them.
+- Never link images on other sites (Notion, Google) — they don't load in Ocean. Use the slide, or save the
+  picture into `<page folder>/assets/`.
+- Rename or move pages **inside Ocean**, which updates the slide links; renaming the folder in Finder breaks them.
 
 Show a slide under the section it belongs to:
 
@@ -337,10 +363,14 @@ Write versions **from the detailed note** (and the slides), and never edit the d
 
 ## 8. Workflows
 
-**A. New lecture from slides.** Find (or create) the course page; create `Course/Week N Title.md` with an icon;
-add its link line to the course page; check `Course/Week N Title/slides/` exists (if not, ask the student to drop
-the PDF on the page); read `slides.md` and the key slide images; write the note in the house style with slides
-and a quiz per section; finish with Errata / Exam summary / Memory sheet. Then tell the student what you wrote.
+**A. New lecture from slides** (all steps, in order):
+1. Find (or create) the course page; create `Course/Week N Title.md` with an icon; add its link line to the course page.
+2. Slides: if `Course/Week N Title/slides/slides.md` doesn't exist, copy the PDF into `Course/Week N Title/slides/` (§2).
+3. Read the slide text and the key slide images.
+4. Write the detailed note in the house style: slides under each section, a quiz per section, **exam-importance
+   marks on the key phrases** (§3b), and finish with Errata / Exam summary / Memory sheet.
+5. Write `Course/Week N Title.short.md` (Short read) and `Course/Week N Title.recall.md` (Recall sheet) from it (§7).
+6. Run the checklist below, then tell the student what you wrote (all four parts).
 
 **B. Add quizzes to an existing note.** Add one ```` ```quiz ```` block at the end of each top-level section that
 doesn't have one. Don't change anything else.
@@ -356,5 +386,9 @@ section. Vary the forms; don't add them where plain text is enough.
 **F. Mark what matters for the exam.** Read the note (and its slides) and add exam-importance marks (§3b)
 around the key phrases. Change no other text; keep the student's own highlights.
 
-Before you finish, re-open the file and check: front matter intact, no `# Title` at the top, every image path
-points at an existing file (or a slide number that will exist), every quiz has exactly one `[x]` per question.
+**Checklist before you reply** (re-open the files):
+- [ ] Detailed note: front matter intact, no `# Title` at the top, a slide under every section, a quiz per section.
+- [ ] Exam marks: the detailed note contains `=={!!!}` marks (a few per big section) and some `=={!!}` / `=={!}`.
+- [ ] `….short.md` and `….recall.md` exist next to the note and follow §7.
+- [ ] Every image path points at an existing file (or a slide number that will exist); no links to Notion/Google images.
+- [ ] Every quiz has exactly one `[x]` per question.

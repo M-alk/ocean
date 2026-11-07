@@ -19,6 +19,9 @@ My Degree / Year 2 / Biology, my usual style,
 slides under each section and a quiz after every section.
 ```
 
+Claude writes all four parts every time: the detailed note, its exam-importance highlights, the Short read
+and the Recall sheet. If it skips one, say "do the full checklist".
+
 ## Option B — Claude Code (or Codex, Cursor)
 
 Open a terminal in your notes folder and start the agent there:
@@ -33,7 +36,8 @@ Claude Code reads `CLAUDE.md` automatically (Codex and Cursor read `AGENTS.md`).
 ## The study loop
 
 1. Make the lecture page in Ocean (or let Claude make it).
-2. **Drop the lecture PDF onto the page.** Ocean turns it into slide images and saves the slide text for Claude.
+2. **Add the lecture PDF**: drop it onto the page — or just give it to Claude, which copies it into the page's
+   `slides/` folder. Either way Ocean turns it into slide images and saves the slide text for Claude.
 3. Ask Claude for the note (prompt above). The page fills in live.
 4. Study with **Slides** open beside the note; do each section's quiz; review the Exam summary.
 

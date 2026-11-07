@@ -191,6 +191,13 @@ export function makeHandler() {
             await fsp.rm(tmp, { force: true });
           }
         }
+        case 'POST /api/slides/source':
+          return json(res, 200, await vault.saveSlideSource(q.page, q.name || 'slides.pdf', await readBody(req)));
+        case 'PUT /api/slides/image':
+          await vault.saveSlideImage(q.page, q.name || '', await readBody(req));
+          return json(res, 200, { ok: true });
+        case 'POST /api/slides/finish':
+          return json(res, 200, await vault.finishSlides(q.page, JSON.parse((await readBody(req)).toString('utf8'))));
         case 'GET /api/slides':
           return json(res, 200, await vault.listSlides(q.page));
         case 'GET /api/activity':

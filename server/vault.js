@@ -357,7 +357,49 @@ export async function listSlides(pageRel) {
     .map((f) => ({ n: Number(/\d+/.exec(f)[0]), file: f, path: relOf(path.join(dir, f)) }))
     .sort((a, b) => a.n - b.n);
   const original = files.find((f) => /\.(pdf|pptx?|key|odp)$/i.test(f));
-  return { items, source: original ? { name: original, path: relOf(path.join(dir, original)) } : null };
+  // A PDF that hasn't been turned into slide images yet (e.g. an AI copied it here): Ocean imports it by itself.
+  let pending = null;
+  if (original && /\.pdf$/i.test(original)) {
+    const mtime = async (f) => (await fsp.stat(path.join(dir, f)).catch(() => null))?.mtimeMs ?? 0;
+    const done = files.includes('slides.md') ? await mtime('slides.md') : 0;
+    if (!items.length || (await mtime(original)) > done + 1000) pending = { name: original, path: relOf(path.join(dir, original)) };
+  }
+  return { items, source: original ? { name: original, path: relOf(path.join(dir, original)) } : null, pending };
+}
+
+// ---------- slide import done in the app (PDF.js), so no extra tools are needed ----------
+
+/** Keep the lecture file in "<page folder>/slides/", replacing any older one. */
+export async function saveSlideSource(pageRel, name, buf) {
+  const outDir = abs(`${pageDir(pageRel)}/slides`);
+  await fsp.mkdir(outDir, { recursive: true });
+  const ext = (path.extname(name) || '.pdf').toLowerCase();
+  if (!/^\.(pdf|pptx?|key|odp)$/.test(ext)) throw new Error('Not a slide file');
+  const file = safeName(path.basename(name, path.extname(name))) + ext;
+  for (const f of await fsp.readdir(outDir)) if (/\.(pdf|pptx?|key|odp)$/i.test(f) && f !== file) await fsp.rm(path.join(outDir, f));
+  await fsp.writeFile(path.join(outDir, file), buf);
+  return { name: file, path: relOf(path.join(outDir, file)) };
+}
+
+/** One rendered slide: "pNN.jpg". */
+export async function saveSlideImage(pageRel, file, buf) {
+  if (!/^p\d{2,4}\.jpg$/.test(file)) throw new Error('Bad slide image name');
+  const outDir = abs(`${pageDir(pageRel)}/slides`);
+  await fsp.mkdir(outDir, { recursive: true });
+  await fsp.writeFile(path.join(outDir, file), buf);
+}
+
+/** Finish an import: write slides.md (each slide's text) and remove images left over from an older, longer deck. */
+export async function finishSlides(pageRel, { name = 'slides.pdf', texts = [] }) {
+  const outDir = abs(`${pageDir(pageRel)}/slides`);
+  const count = texts.length;
+  const pad = Math.max(2, String(count).length);
+  const keep = new Set(texts.map((_, i) => `p${String(i + 1).padStart(pad, '0')}.jpg`));
+  for (const f of await fsp.readdir(outDir)) if (/^p\d+\.(jpe?g|png|webp)$/i.test(f) && !keep.has(f)) await fsp.rm(path.join(outDir, f));
+  const lines = [`# Slides: ${name}`, '', `${count} slides. Image for slide N: \`slides/pNN.jpg\`.`, ''];
+  texts.forEach((t, i) => lines.push(`## Slide ${i + 1} — p${String(i + 1).padStart(pad, '0')}.jpg`, '', String(t || '').trim() || '(no text)', ''));
+  await fsp.writeFile(path.join(outDir, 'slides.md'), lines.join('\n'));
+  return { count, folder: relOf(outDir) };
 }
 
 /**

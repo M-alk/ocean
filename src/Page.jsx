@@ -9,6 +9,7 @@ import PageMenu from './PageMenu.jsx';
 import SlideViewer from './SlideViewer.jsx';
 import Widget from './widget.jsx';
 import { visualFrame, visualTitle, isHtml } from './visual.js';
+import { importPdfSlides } from './pdf-import.js';
 
 // How exam-importance highlights (=={!!!}text== …) are shown.
 const EXAM_VIEWS = [
@@ -77,6 +78,9 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
   // ---- slides next to the note ----
   const [slides, setSlides] = useState([]);
   const [slideSource, setSlideSource] = useState(null);
+  const [slidePending, setSlidePending] = useState(null); // a PDF in slides/ that isn't imported yet
+  const [slideImport, setSlideImport] = useState(null); // { done, total } while importing
+  const importing = useRef(false);
   const [viewerAt, setViewerAt] = useState(null); // slide number the full-screen viewer is open at
   const [slidesOpen, setSlidesOpen] = useState(() => pref.get('ocean.slidesOpen', true));
   const [inlineHidden, setInlineHidden] = useState(() => pref.get('ocean.slidesCompact', true));
@@ -100,12 +104,15 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
         (r) => {
           setSlides(r.items);
           setSlideSource(r.source);
+          setSlidePending(r.pending || null);
         },
-        () => setSlides([]),
+        () => { setSlides([]); setSlidePending(null); },
       ),
     [path],
   );
   useEffect(() => { loadSlides(); }, [loadSlides]);
+  // New slide images (imported here, or copied in by an AI) replace their "not added yet" tags straight away.
+  useEffect(() => { if (slides.length) editor.current?.retryMissing(); }, [slides]);
   useEffect(() => {
     const dir = path.replace(/\.md$/, '/slides/');
     if (changeTick && [...changeTick.paths].some((p) => p.startsWith(dir))) loadSlides();
@@ -138,6 +145,10 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
 
   // Which slide is the reader looking at? The last slide reference above the upper third of the screen.
   const lockUntil = useRef(0);
+  // While scrolling fast the current slide can change every frame; apply it at most every 150 ms so the page and the
+  // slide panel don't redraw on every frame.
+  const nextActive = useRef(null);
+  const activeTimer = useRef(0);
   const examCounts = useMemo(() => {
     const c = { 1: 0, 2: 0, 3: 0 };
     for (const m of (bodyText || '').matchAll(/==\{(!{1,3})\}/g)) c[m[1].length]++;
@@ -146,7 +157,7 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
   const hasExam = examCounts[1] + examCounts[2] + examCounts[3] > 0;
   const widgetsRef = useRef(widgets);
   widgetsRef.current = widgets;
-  const syncFromScroll = useCallback(() => {
+  const syncFromScroll = useCallback((full = false) => {
     // Interactive: only the section you're reading (its nearest # / ## heading) — sections without a widget show none.
     const ws = widgetsRef.current;
     if (scroller.current) {
@@ -162,9 +173,12 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
     }
     const all = editor.current?.slideRefs() || [];
     const refs = all.filter((r) => r.el.offsetParent !== null); // hidden sections don't count
-    const counts = new Map();
-    for (const r of all) counts.set(r.n, (counts.get(r.n) || 0) + 1);
-    setUsedIn((old) => (JSON.stringify([...old]) === JSON.stringify([...counts]) ? old : counts));
+    if (full) {
+      // Which slides the note uses (for the panel's "in note" labels): only on the slow timer, not every scroll frame.
+      const counts = new Map();
+      for (const r of all) counts.set(r.n, (counts.get(r.n) || 0) + 1);
+      setUsedIn((old) => (JSON.stringify([...old]) === JSON.stringify([...counts]) ? old : counts));
+    }
     if (!refs.length || !scroller.current) return;
     if (Date.now() < lockUntil.current) return; // a slide was just picked; let the scroll finish
     const line = scroller.current.getBoundingClientRect().top + scroller.current.clientHeight * 0.35;
@@ -176,8 +190,17 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
       const bottom = sc.getBoundingClientRect().bottom;
       for (const r of refs) if (r.el.getBoundingClientRect().top < bottom) cur = r.n;
     }
-    setFollow(true);
-    setActive(cur);
+    nextActive.current = cur;
+    if (full) {
+      setFollow(true);
+      setActive(cur);
+    } else if (!activeTimer.current) {
+      activeTimer.current = setTimeout(() => {
+        activeTimer.current = 0;
+        setFollow(true);
+        setActive(nextActive.current);
+      }, 150);
+    }
   }, []);
   useEffect(() => {
     const el = scroller.current;
@@ -185,13 +208,16 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
     let raf = 0;
     const on = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(syncFromScroll);
+      raf = requestAnimationFrame(() => syncFromScroll());
     };
     el.addEventListener('scroll', on, { passive: true });
-    const t = setInterval(syncFromScroll, 1500); // picks up edits and late-loading images
+    syncFromScroll(true);
+    const t = setInterval(() => syncFromScroll(true), 1500); // picks up edits and late-loading images
     return () => {
       el.removeEventListener('scroll', on);
       clearInterval(t);
+      clearTimeout(activeTimer.current);
+      activeTimer.current = 0;
       cancelAnimationFrame(raf);
     };
   }, [syncFromScroll, page]);
@@ -422,20 +448,49 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
   };
 
   // ---- slides ----
-  const importSlides = async (file) => {
-    if (!file) return;
-    toast(`Importing ${file.name}… (one image per slide)`, 60000);
+  // PDFs are turned into slide images inside the app (no extra tools needed); PowerPoint goes through the server,
+  // which needs LibreOffice.
+  const runImport = async (work, label) => {
+    if (importing.current) return;
+    importing.current = true;
+    setSlideImport({ done: 0, total: 0, label });
     try {
-      const r = await api.slides(path, file);
+      const r = await work((done, total) => setSlideImport({ done, total, label }));
       toast(`Imported ${r.count} slides into ${r.folder}/`);
       await loadSlides();
       setSlidesOpen(true);
       // Re-render images that were waiting for these files.
       editor.current?.replace(lastBody.current ?? '');
     } catch (e) {
-      toast('Slide import failed: ' + e.message);
+      toast('Slide import failed: ' + e.message + (/soffice|libreoffice/i.test(e.message) ? ' — export the slides as PDF and drop the PDF instead.' : ''), 12000);
+    } finally {
+      importing.current = false;
+      setSlideImport(null);
     }
   };
+  const importSlides = (file) => {
+    if (!file) return;
+    if (/\.pdf$/i.test(file.name)) return runImport((onProgress) => importPdfSlides(path, { data: file, name: file.name, onProgress }), file.name);
+    return runImport(() => api.slides(path, file), file.name);
+  };
+  // A PDF placed in this page's slides/ folder (e.g. by an AI) is imported as soon as the page is open.
+  useEffect(() => {
+    if (!slidePending || importing.current) return;
+    const url = '/vault/' + slidePending.path.split('/').map(encodeURIComponent).join('/');
+    runImport(async (onProgress) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`couldn't open ${slidePending.name}`);
+      return importPdfSlides(path, { data: await res.arrayBuffer(), name: slidePending.name, saveSource: false, onProgress });
+    }, slidePending.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slidePending, path]);
+  // Slides the note links to that aren't in the folder yet.
+  const missingSlides = useMemo(() => {
+    const have = new Set(slides.map((x) => x.n));
+    const refs = new Set();
+    for (const m of (bodyText || '').matchAll(/\/slides\/p(\d+)\.(?:jpe?g|png|webp)/gi)) refs.add(Number(m[1]));
+    return [...refs].filter((n) => !have.has(n)).length;
+  }, [bodyText, slides]);
   const onDrop = (e) => {
     setDragging(false);
     const f = [...(e.dataTransfer?.files || [])].find((x) => SLIDE_FILE.test(x.name));
@@ -504,7 +559,7 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
   const aiPrompts = [
     {
       icon: 'page', label: 'Write notes from the slides',
-      text: `Read the lecture slides in "${slidesFile}" (text) and the slide images next to it, then write clear study notes into "${file}". Follow the rules in "${vaultDir}/CLAUDE.md": one section per topic, link the slide images each section comes from, real tables and formulas instead of screenshots, and a short "Key idea" per section.`,
+      text: `Read the lecture slides in "${slidesFile}" (text) and the slide images next to it, then write clear study notes into "${file}". Follow the rules in "${vaultDir}/CLAUDE.md" ("Every lecture note = 4 things"): the detailed note with slides under each section and a quiz per section, exam-importance marks on the key phrases, plus the Short read (.short.md) and the Recall sheet (.recall.md) next to it. Run the checklist before you reply.`,
     },
     {
       icon: 'help', label: 'Add a quiz after each section',
@@ -649,8 +704,21 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
             if (e.target.closest('.ProseMirror, button, a, input, textarea, select, label, .page-head, .subpages, .embed-wrap, .quiz, .popover, .milkdown-slash-menu, .milkdown-block-handle, .milkdown-toolbar')) return;
             if (!e.target.closest('.page')) return;
             editor.current?.focusAt(e.clientX, e.clientY);
-          }} className={'scroller' + (slideImgsHidden && !showPanel ? ' no-slide-refs' : slideImgsHidden || (showPanel && inlineHidden) ? ' compact-slides' : '') + (quizzesHidden ? ' hide-quizzes' : '') + (reading ? ' reading-mode' : '') + (hasExam ? ' exam-' + examView : '')} ref={scroller}>
+          }} className={'scroller' + (slideImgsHidden && !showPanel ? ' no-slide-refs' : slideImgsHidden || (showPanel && inlineHidden) ? ' compact-slides' : '') + (quizzesHidden ? ' hide-quizzes' : '') + (reading ? ' reading-mode' : '') + (hasExam ? ' exam-' + examView : '') + (slideImport ? ' slides-importing' : '')} ref={scroller}>
         {error && <div className="page-error">{error}</div>}
+        {slideImport ? (
+          <div className="slide-bar">
+            <Icon name="slides" />
+            <span>Importing slides from <b>{slideImport.label}</b>{slideImport.total ? ` — ${slideImport.done} of ${slideImport.total}` : '…'}</span>
+            <span className="slide-bar-track"><span style={{ width: slideImport.total ? (100 * slideImport.done) / slideImport.total + '%' : '4%' }} /></span>
+          </div>
+        ) : missingSlides > 0 && !slidePending ? (
+          <div className="slide-bar">
+            <Icon name="slides" />
+            <span>This note uses {missingSlides} slide{missingSlides === 1 ? '' : 's'} that {missingSlides === 1 ? "isn't" : "aren't"} here yet. {slides.length ? 'Add the full lecture PDF to fill them in.' : 'Add the lecture PDF to show them.'}</span>
+            <button className="slide-bar-btn" onClick={() => fileInput.current.click()}>Add lecture PDF</button>
+          </div>
+        ) : null}
         {page && (
           <article className="page">
             <div className={'page-head' + (page.icon ? ' has-icon' : '')}>

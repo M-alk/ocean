@@ -27,9 +27,10 @@ following the same format, and say that file access would let you save it direct
   put a `# Title` line at the top. Keep the `---` front matter (e.g. `icon: "icon:reference:gray"`).
 - Links are relative to the file you edit; wrap paths with spaces in `<…>`:
   `![Slide 8](<Week 3 Word Embeddings/slides/p08.jpg>)`.
-- Slides are `slides/pNN.jpg` (two digits) plus `slides/slides.md` (the text of each slide). They're created when
-  the user **drops the lecture PDF onto the page in Ocean**. If they aren't there yet, still link slides by number
-  and ask the user to drop the PDF on the page — the images appear automatically.
+- Slides are `slides/pNN.jpg` (two digits = PDF page number) plus `slides/slides.md` (the text of each slide).
+  **To add them, copy the lecture PDF into `<page folder>/slides/`** — Ocean converts it by itself as soon as the page
+  is open. (Or write the `pNN.jpg` images yourself.) Only if you can't save files, ask the user to drop the PDF on
+  the page. Link slides by number right away; each picture appears as soon as its image exists.
 - When you create a sub-page, add a link line for it in the parent page: `[Title](<Parent/Title.md>)`.
 - Quizzes: a ```` ```quiz ```` block at the end of every top-level section; 3–5 questions, 4 options, exactly one
   `- [x]`, and a `> explanation` line per question.
@@ -40,15 +41,18 @@ following the same format, and say that file access would let you save it direct
 
 1. Find or create the course page, then create `Course/Week N Title.md` (with an icon) and add its link line to
    the course page in week order.
-2. Make sure the slides are imported (`Course/Week N Title/slides/slides.md` exists). If not, ask the user to drop
-   the PDF onto that page in Ocean, or work from the PDF they gave you and link slides by number.
+2. Get the slides in: if `Course/Week N Title/slides/slides.md` doesn't exist, copy the PDF into
+   `Course/Week N Title/slides/` (Ocean imports it when the page is open). Read the PDF itself until then.
 3. Read `slides.md`, then look at the slide images that hold diagrams, tables and worked examples.
 4. Write the note in the house style (see `CLAUDE.md` §6): Overview → Quick reminder of last week → numbered
    sections with the right slide under each sub-section, a Key idea, and a quiz → Slide Errata → Exam-Focused
    Summary → Super Short Memory Sheet. Formulas in LaTeX, tables as Markdown, every worked-example step shown.
    Mark exam importance on key phrases: `=={!!!}must know==`, `=={!!}important==`, `=={!}good to know==` (`CLAUDE.md` §3b), sparingly.
-5. Re-read the file you wrote: front matter intact, slide paths correct, one `[x]` per question.
-6. Tell the user the page is ready in Ocean and summarise what's in it (sections, quizzes, anything you weren't
+5. Write the **Short read** (`Week N Title.short.md`) and the **Recall sheet** (`Week N Title.recall.md`) next to the
+   note, from the detailed note (`CLAUDE.md` §7). These are part of every lecture note, not extras.
+6. Re-read the files: front matter intact, slide paths correct, one `[x]` per question, **exam marks present**
+   (`=={!!!}` …), short + recall files exist.
+7. Tell the user the page is ready in Ocean and summarise what's in it (sections, quizzes, anything you weren't
    sure about on the slides).
 
 Other common asks: **add questions/quizzes** (only add quiz blocks, change nothing else), **add slides to an
