@@ -14,8 +14,8 @@ Ocean has no AI inside it on purpose: your notes are files, so **the AI you alre
 4. Start a new chat and try:
 
 ```
-Here are my slides for NLP Week 4 (attached). Make the Ocean note: new page under
-Artificial intelligence / Final Year / Natural Language Processing, my usual style,
+Here are my slides for Biology Week 4 (attached). Make the Ocean note: new page under
+My Degree / Year 2 / Biology, my usual style,
 slides under each section and a quiz after every section.
 ```
 
