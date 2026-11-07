@@ -1,0 +1,66 @@
+{
+  "name": "ocean-notes",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ocean: a Notion-style study notebook on plain Markdown files. Slides beside notes, quizzes, and any AI can edit your notes.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite build && node server/standalone.js",
+    "app": "vite build && electron .",
+    "app:build": "vite build && electron-builder --mac",
+    "import:notion": "node scripts/import-notion.js",
+    "slides": "node scripts/import-slides.js"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.2.1",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "vite": "^8.3.6",
+    "@milkdown/crepe": "^7.23.0",
+    "@milkdown/kit": "^7.23.0",
+    "@notion-kit/icons": "^1.2.0",
+    "@notion-kit/ui": "^1.2.0",
+    "d3-force": "^3.0.1",
+    "linkedom": "^0.18.15",
+    "mermaid": "^11.17.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "turndown": "^7.2.5",
+    "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^4.6.7"
+  },
+  "productName": "Ocean",
+  "license": "MIT",
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "app.ocean.notes",
+    "productName": "Ocean",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "server/**",
+      "templates/**",
+      "electron/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "title": "Ocean"
+    }
+  },
+  "author": "Mohammed Ali Alketbi"
+}

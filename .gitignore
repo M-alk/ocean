@@ -1,0 +1,8 @@
+node_modules
+dist
+release
+build/icon-src.png
+.DS_Store
+.claude/settings.local.json
+# Your own notes never go in the repo (the dev server's default notes folder)
+vault/
