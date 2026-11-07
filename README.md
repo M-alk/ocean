@@ -6,12 +6,34 @@ beside your notes, every section can end with a quiz, and a study heatmap keeps 
 
 Free and open source (MIT). Your notes stay on your computer.
 
-**[⬇ Download the Mac app](https://github.com/M-alk/ocean/releases/latest)** (Apple Silicon). First open: right-click Ocean → Open,
-because the app isn’t notarised by Apple yet.
+**[⬇ Download the Mac app](https://github.com/M-alk/ocean/releases/latest)** (Apple Silicon) — see [Install the Mac app](#install-the-mac-app-no-coding-needed).
 
-## Get started
+## Install the Mac app (no coding needed)
 
-You need [Node.js](https://nodejs.org) 20 or newer (and a Mac for the desktop app).
+Works on Macs with Apple Silicon (M1 or newer). To check: Apple menu → **About This Mac** → "Chip: Apple M…".
+On an Intel Mac, use the steps in [Run from the code](#run-from-the-code) instead.
+
+1. Download **Ocean-…-arm64.dmg** from the [latest release](https://github.com/M-alk/ocean/releases/latest).
+2. Open it and drag **Ocean** into **Applications**.
+3. Open Ocean. The first time, macOS blocks it because the app isn't notarised by Apple yet. To allow it:
+   - Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Ocean.
+   - Open Ocean again and click **Open**.
+   - On older macOS versions, right-clicking Ocean and choosing **Open** also works.
+4. Click **Allow** when Ocean asks for your Documents folder.
+
+Ocean then shows a short welcome guide and creates your notes folder at `~/Documents/Ocean`. Everything stays on
+your Mac: no account and no internet needed. You only need Claude (or another AI) for the AI features, like
+writing notes from your slides.
+
+If macOS says the app "is damaged" or still won't open it, run this once in Terminal, then open Ocean normally:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Ocean.app
+```
+
+## Run from the code
+
+To run Ocean from the code (any Mac, Windows or Linux), you need [Node.js](https://nodejs.org) 20 or newer (and a Mac for the desktop app).
 
 ```bash
 git clone https://github.com/M-alk/ocean.git
