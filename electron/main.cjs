@@ -1,5 +1,5 @@
 // Ocean desktop app: runs the Ocean server inside the app and shows it in a native window.
-const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -103,6 +103,14 @@ ipcMain.handle('ocean:welcomed', () => {
   writeConfig(c);
 });
 ipcMain.handle('ocean:reveal', () => shell.openPath(process.env.VAULT));
+// The picture on the clipboard (a screenshot or a copied image) as { type, bytes }, or null.
+ipcMain.handle('ocean:clipboard-image', async () => {
+  for (const item of await clipboard.read()) {
+    const type = item.types.find((t) => /^image\/(png|jpeg|gif|webp|tiff)$/.test(t));
+    if (type) return { type, bytes: new Uint8Array(await (await item.getType(type)).arrayBuffer()) };
+  }
+  return null;
+});
 
 app.whenReady().then(() => {
   buildMenu();

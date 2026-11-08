@@ -11,6 +11,7 @@ import { toEditor, fromEditor } from './markdown-images.js';
 import { visualFrame, visualTitle, isHtml } from './visual.js';
 import { highlightPlugins, openHighlightMenu, closeHighlightMenu, currentTone, HIGHLIGHT_ICON } from './highlight.js';
 import { parseIcon, iconMaskUrl } from './PageIcon.jsx';
+import { prepareImage, readClipboardImage, isUnnamed } from './clipboard-image.js';
 
 const svg = (d) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
@@ -34,6 +35,7 @@ const ICONS = {
   numbered: svgText('1.', 12),
   todo: svg('M5 5h14v14H5z M8.5 12l2.5 2.5 4.5-5'),
   image: svg('M4 5h16v14H4z M4 16l5-5 4 4 2.5-2.5L20 17 M15.5 9h.01'),
+  paste: svg('M9 3.5h6v3H9z M9 5H6v15h12V5h-3 M9 11.5h6 M9 15h4'),
   code: svg('M9 7l-5 5 5 5 M15 7l5 5-5 5'),
   table: svg('M4 5h16v14H4z M4 10h16 M4 14.5h16 M10 5v14'),
   math: svg('M4 12h3l3 7 4-14h6'),
@@ -121,7 +123,7 @@ export const slideOf = (url) => {
  * Notion-like block editor whose source of truth is Markdown.
  * It only reports a change when the user actually edited something, so opening a page never rewrites the file.
  */
-const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage, onSlideClick, onSlideOpen, onNewSubpage, onPickHtml, readOnly, pages, onWidgetClick }, ref) {
+const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage, onSlideClick, onSlideOpen, onNewSubpage, onPickHtml, onToast, readOnly, pages, onWidgetClick }, ref) {
   const onWidgetClickRef = useRef(onWidgetClick);
   onWidgetClickRef.current = onWidgetClick;
   const pagesRef = useRef(new Map());
@@ -140,7 +142,23 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
   const onSlideClickRef = useRef(onSlideClick);
   onSlideClickRef.current = onSlideClick;
   const actions = useRef({});
-  actions.current = { onNewSubpage, onPickHtml };
+  actions.current = { onNewSubpage, onPickHtml, onToast };
+  // Save pasted or dropped files next to the page and put them where the cursor is:
+  // images (screenshots, copied pictures) go to the page's assets/ folder, HTML files to embeds/.
+  const addFiles = useRef(null);
+  addFiles.current = async (list) => {
+    for (const f of list) {
+      try {
+        const html = /\.html?$/i.test(f.name);
+        const { link } = await api.upload(pagePath, html ? f : await prepareImage(f));
+        const alt = isUnnamed(f) ? 'Pasted image' : f.name.replace(/\.[^.]+$/, '');
+        const md = html ? `\n\`\`\`embed\n${link}\n\`\`\`\n` : `\n![${alt}](<${link}>)\n`;
+        crepeRef.current?.editor.action(insert(toEditor(md)));
+      } catch (e) {
+        actions.current.onToast?.(`Couldn't add ${f.name || 'the image'}: ${e.message}`);
+      }
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     /** Replace content after the file changed on disk (e.g. an AI edited it). */
@@ -194,7 +212,7 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
 
   useEffect(() => {
     let destroyed = false;
-    const upload = async (file) => (await api.upload(pagePath, file)).link;
+    const upload = async (file) => (await api.upload(pagePath, await prepareImage(file))).link;
     const crepe = new Crepe({
       root: host.current,
       defaultValue: toEditor(body),
@@ -243,6 +261,20 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
                 onRun: (ctx) => {
                   clear(ctx);
                   actions.current.onNewSubpage?.((md) => crepeRef.current?.editor.action(insert(md)));
+                },
+              })
+              .addItem('clipboard', {
+                label: 'Paste image · Screenshot',
+                icon: ICONS.paste,
+                onRun: async (ctx) => {
+                  clear(ctx);
+                  try {
+                    const file = await readClipboardImage();
+                    if (file) return addFiles.current([file]);
+                    actions.current.onToast?.('No image on the clipboard. Press ⌃⇧⌘4 to copy a screenshot (or copy a picture), then try again.', 6000);
+                  } catch (e) {
+                    actions.current.onToast?.(e.message, 6000);
+                  }
                 },
               })
               .addItem('html', {
@@ -460,22 +492,23 @@ const Editor = forwardRef(function Editor({ pagePath, body, onChange, onOpenPage
       if (/^[a-z]+:/i.test(href)) window.open(href, '_blank', 'noopener');
       else if (/\.md(#.*)?$/i.test(href)) onOpenPage(resolveLink(pagePath, href.replace(/#.*$/, '')));
     };
-    // Pasted or dropped images go to the page's assets/ folder, HTML files to embeds/.
-    const upload = async (file) => (await api.upload(pagePath, file)).link;
-    const files = async (e, list) => {
+    // Pasted or dropped images and HTML files (see addFiles).
+    const files = (e, list) => {
+      if (readOnlyRef.current) return;
       const picked = [...(list || [])].filter((f) => f.type.startsWith('image/') || /\.html?$/i.test(f.name));
       if (!picked.length) return;
       e.preventDefault();
       e.stopPropagation();
-      for (const f of picked) {
-        const link = await upload(f);
-        const md = /\.html?$/i.test(f.name)
-          ? `\n\`\`\`embed\n${link}\n\`\`\`\n`
-          : `\n![${f.name.replace(/\.[^.]+$/, '')}](<${link}>)\n`;
-        crepeRef.current?.editor.action(insert(toEditor(md)));
-      }
+      addFiles.current(picked);
     };
-    const paste = (e) => files(e, e.clipboardData?.files);
+    const paste = (e) => {
+      const data = e.clipboardData;
+      // Word, Keynote and Numbers put a picture of copied text on the clipboard too: paste the text then.
+      const text = data?.getData('text/plain')?.trim();
+      const names = [...(data?.files || [])].map((f) => f.name);
+      if (text && !names.includes(text)) return;
+      files(e, data?.files);
+    };
     const drop = (e) => files(e, e.dataTransfer?.files);
     el.addEventListener('error', mark, true);
     el.addEventListener('load', mark, true);

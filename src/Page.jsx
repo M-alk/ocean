@@ -5,6 +5,7 @@ import IconPicker from './IconPicker.jsx';
 import PageIcon from './PageIcon.jsx';
 import { Icon } from './icons.jsx';
 import SlidePanel from './SlidePanel.jsx';
+import Outline from './Outline.jsx';
 import PageMenu from './PageMenu.jsx';
 import SlideViewer from './SlideViewer.jsx';
 import Widget from './widget.jsx';
@@ -699,6 +700,7 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
       )}
 
       <div className="body-row">
+      <div className="scroll-wrap">
       <div onClick={(e) => {
             // Click anywhere around the text (margins, below the last line) to start typing there, like Notion.
             if (e.target.closest('.ProseMirror, button, a, input, textarea, select, label, .page-head, .subpages, .embed-wrap, .quiz, .popover, .milkdown-slash-menu, .milkdown-block-handle, .milkdown-toolbar')) return;
@@ -772,7 +774,7 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
             <Editor ref={editor} key={docPath} pagePath={docPath} body={page.body} onChange={onChange} onOpenPage={onOpenPage} onSlideClick={onSlideClick} onSlideOpen={(n) => slides.length && setViewerAt(n)} onWidgetClick={(src) => {
               const i = widgetsRef.current.findIndex((w) => w.source.trim() === String(src).trim());
               if (i >= 0) { setInteractiveOn(true); setPinnedWidget(i); }
-            }} pages={pages} onNewSubpage={newSubpage} onPickHtml={() => htmlInput.current.click()} readOnly={locked || reading} />
+            }} pages={pages} onNewSubpage={newSubpage} onPickHtml={() => htmlInput.current.click()} onToast={toast} readOnly={locked || reading} />
             )}
             {reading && current && !docMissing && (
               <div className="reader-nav">
@@ -804,6 +806,8 @@ export default function Page({ pages, childPages = [], path, vaultDir, changeTic
             })()}
           </article>
         )}
+      </div>
+      {!reading && <Outline scroller={scroller} />}
       </div>
       {interactiveOn && shownWidget >= 0 && widgets[shownWidget] && (
         <InteractivePanel widget={widgets[shownWidget]} pinned={pinnedWidget >= 0} onClose={() => (pinnedWidget >= 0 ? setPinnedWidget(-1) : setInteractiveOn(false))} />

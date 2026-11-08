@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('oceanDesktop', {
   chooseFolder: () => ipcRenderer.invoke('ocean:choose-folder'),
   markWelcomed: () => ipcRenderer.invoke('ocean:welcomed'),
   revealFolder: () => ipcRenderer.invoke('ocean:reveal'),
+  clipboardImage: () => ipcRenderer.invoke('ocean:clipboard-image'),
 });

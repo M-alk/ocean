@@ -1,7 +1,7 @@
 {
   "name": "ocean-notes",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Ocean: a Notion-style study notebook on plain Markdown files. Slides beside notes, quizzes, and any AI can edit your notes.",
   "scripts": {

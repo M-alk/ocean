@@ -51,6 +51,10 @@ uploadable skill in `skills/ocean-study-notes`).
 
 - **Notion-style editor** on Markdown files: slash menu (`/`), `/p` for a sub-page, tables, maths (KaTeX),
   Mermaid diagrams, code, images, checklists. Sub-pages show as Notion page rows.
+- **Outline on the right edge**, like Notion: a dash per heading, the one you're reading lit up. Hover for the
+  list of headings; click one to jump there.
+- **Paste screenshots and pictures.** Press ⌃⇧⌘4 to copy part of the screen, then ⌘V in a note (or `/paste`).
+  Pictures are saved next to the page in its `assets/` folder; big screenshots are made smaller automatically.
 - **Your notes are files.** Pages are `.md` files; pages inside pages are folders. AI tools edit them directly and
   Ocean updates live. Rules for AI tools live in `CLAUDE.md` / `AGENTS.md` inside your notes folder.
 - **Slides beside notes.** Drop a lecture PDF/PowerPoint on a page: one image per slide plus the slide text for

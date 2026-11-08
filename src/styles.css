@@ -240,6 +240,23 @@ code { font-family: var(--mono); }
 /* ---------- slides beside the note ---------- */
 .body-row { flex: 1; min-height: 0; display: flex; }
 .body-row .scroller { flex: 1; min-width: 0; }
+/* Outline on the right edge: a dash per heading; hover for the list (Notion-style). */
+.scroll-wrap { flex: 1; min-width: 0; display: flex; position: relative; container-type: inline-size; }
+.outline { position: absolute; top: 64px; right: 16px; z-index: 5; max-height: calc(100% - 100px); display: flex; }
+.outline-dashes { display: flex; flex-direction: column; align-items: flex-end; gap: 11px; padding: 8px 2px 8px 16px; overflow: hidden; cursor: pointer; }
+.outline-dashes span { flex: none; display: block; height: 2px; width: 18px; border-radius: 1px; background: var(--text-3); opacity: 0.55; transition: background 0.15s, opacity 0.15s; }
+.outline-dashes .l1 { width: 13px; }
+.outline-dashes .l2 { width: 9px; }
+.outline-dashes .on { background: var(--text); opacity: 1; }
+.outline.open .outline-dashes { visibility: hidden; }
+.outline-card { position: absolute; top: -6px; right: -4px; width: 260px; max-height: min(70vh, calc(100vh - 150px)); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1px; padding: 8px 6px; background: var(--popover); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); animation: outline-in 0.12s ease-out; }
+.outline-card button { flex: none; text-align: left; padding: 4px 8px; border-radius: 6px; color: var(--text-2); font-size: 14px; line-height: 1.35; }
+.outline-card button:hover { background: var(--hover); color: var(--text); }
+.outline-card .l1 { padding-left: 20px; }
+.outline-card .l2 { padding-left: 32px; font-size: 13px; }
+.outline-card .on { color: var(--accent); }
+@keyframes outline-in { from { opacity: 0; transform: translateX(6px); } }
+@container (max-width: 720px) { .outline { display: none; } }
 .top-btn { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 6px; color: var(--text-2); }
 .top-btn:hover { background: var(--hover); }
 .top-btn.on { background: var(--active); color: var(--text); }
